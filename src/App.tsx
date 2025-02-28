@@ -4,6 +4,7 @@ import { OrbitControls } from '@react-three/drei';
 import { Physics, useSphere, usePlane, useBox } from '@react-three/cannon';
 import * as THREE from 'three';
 import './App.css';
+import { Bowl } from './bowl';
 
 function Box({ position }: { position: [number, number, number] }) {
   const [ref] = useSphere(() => ({

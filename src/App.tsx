@@ -1,10 +1,14 @@
-import React from 'react';
-import { Canvas } from '@react-three/fiber';
+// todo
+// 미우스 위치에 정확히 멈추도록
+
+import React, { useEffect, useState } from 'react';
+import { Canvas, useThree } from '@react-three/fiber';
 import { OrbitControls } from '@react-three/drei';
 import { Physics, useSphere, usePlane, useBox } from '@react-three/cannon';
 import * as THREE from 'three';
 import './App.css';
 import { Bowl } from './bowl';
+import { Raycaster } from 'three';
 
 function Box({ position }: { position: [number, number, number] }) {
   const [ref] = useSphere(() => ({
@@ -46,7 +50,7 @@ function Wall({ position, rotation }: { position: [number, number, number], rota
   const [ref] = useBox(() => ({
     position: position,
     rotation: rotation,
-    args: [0.2, 1, 5] // Narrow wall with height 2 and length 15
+    args: [0.2, 2, 15] // Narrow wall with height 2 and length 15
   }));
 
   return (
@@ -57,29 +61,68 @@ function Wall({ position, rotation }: { position: [number, number, number], rota
   );
 }
 
-function App() {
+function Scene() {
+  const [gravity, setGravity] = useState<[number, number, number]>([0, -9.81, 0]);
+  const raycaster = new Raycaster();
+  const mouse = new THREE.Vector2();
+  const { camera, scene } = useThree();
+
+  const handleMouseMove = (event: MouseEvent) => {
+    mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+    mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+
+    raycaster.setFromCamera(mouse, camera);
+    const intersects = raycaster.intersectObjects(scene.children);
+
+    if (intersects.length > 0) {
+      const targetPosition = intersects[0].point;
+      setGravity([targetPosition.x, -9.81, targetPosition.z]);
+    }
+  };
+
+  useEffect(() => {
+    window.addEventListener('mousemove', handleMouseMove);
+    return () => {
+      window.removeEventListener('mousemove', handleMouseMove);
+    };
+  }, []);
+
   const boxes = Array.from({ length: 300 }, () => ([
-    (Math.random() - 0.5) * 10, // Random X position
-    Math.random() * 5 + 1,      // Random Y position
-    (Math.random() - 0.5) * 10  // Random Z position
+    (Math.random() - 0.5) * 10,
+    Math.random() * 5 + 1,
+    (Math.random() - 0.5) * 10
   ]));
 
   return (
-    <Canvas shadows camera={{ position: [3, 3, 3], fov: 75 }}>
+    <>
       <axesHelper scale={10} />
-      <ambientLight intensity={0.5} />
-      <pointLight position={[3, 3, 3]} intensity={1} castShadow />
-      <Physics gravity={[0, -9.81, 0]}> {/* 중력 설정 */}
+      <ambientLight intensity={2} />
+      <pointLight position={[3, 3, 3]} intensity={10} castShadow />
+      <Physics gravity={gravity}>
         {boxes.map((position, index) => (
           <Box key={index} position={position as [number, number, number]} />
         ))}
         <Plane position={[0, -1, 0]} />
-        <Wall position={[-4.5, 0, 0]} rotation={[0, 0, 0]} /> {/* Left wall */}
-        <Wall position={[4.5, 0, 0]} rotation={[0, 0, 0]} /> {/* Right wall */}
-        <Wall position={[0, 0, -4.5]} rotation={[0, Math.PI / 2, 0]} /> {/* Front wall */}
-        <Wall position={[0, 0, 4.5]} rotation={[0, Math.PI / 2, 0]} /> {/* Back wall */}
+        <Wall position={[-4.5, 0, 0]} rotation={[0, 0, 0]} />
+        <Wall position={[4.5, 0, 0]} rotation={[0, 0, 0]} />
+        <Wall position={[0, 0, -4.5]} rotation={[0, Math.PI / 2, 0]} />
+        <Wall position={[0, 0, 4.5]} rotation={[0, Math.PI / 2, 0]} />
       </Physics>
       <OrbitControls />
+    </>
+  );
+}
+
+function App() {
+  const boxes = Array.from({ length: 300 }, () => ([
+    (Math.random() - 0.5) * 10,
+    Math.random() * 5 + 1,
+    (Math.random() - 0.5) * 10
+  ]));
+
+  return (
+    <Canvas shadows camera={{ position: [3, 3, 3], fov: 75 }}>
+      <Scene />
     </Canvas>
   );
 }
